@@ -1,61 +1,62 @@
-# DevID — エンジニア向けアイデンティティ基盤
+# DevID — Identity Platform for Software Engineers
 
-> **「一度登録すれば、どこでも使える。」**
-> 転職サイト向けの、オープンコアなエンジニア特化IDaaS／プロファイルAPI基盤
+**English** | [日本語](docs/README.ja.md)
+
+> **"Register once, use everywhere."**
+> An open-core IDaaS and profile API platform built for software engineers and job platforms.
 
 ---
 
-## 解決する問題
+## The Problem
 
-エンジニアは転職サイトに登録するたびに、同じ情報を何度も入力し直している。  
-転職サイトは会員登録・レジュメ機能をゼロから作り続けている。  
-そのすべての努力にもかかわらず、**登録ユーザーの60〜70%がレジュメを未入力のまま放置している。**
+Engineers re-enter the same information every time they sign up for a new job platform.  
+Job platforms rebuild registration and resume features from scratch.  
+Despite all that effort, **60–70% of registered users never complete their profiles.**
 
 ```
-現状:
-エンジニア → 転職サイトA（レジュメ入力）
-エンジニア → 転職サイトB（また入力）
-エンジニア → 転職サイトC（また入力）
-                ↑ 同じデータを3回入力、2サイトは古いまま
+Today:
+Engineer → Job Platform A (fill out resume)
+Engineer → Job Platform B (fill it out again)
+Engineer → Job Platform C (fill it out again)
+              ↑ Same data entered 3 times, 2 sites go stale
 
-DevIDを使えば:
-エンジニア → GitHubでログイン（一度だけ）
+With DevID:
+Engineer → Sign in with GitHub (once)
                     ↓
-     サイトA ・ サイトB ・ サイトC
-     すべてが同じ最新プロファイルを参照できる
+     Platform A · Platform B · Platform C
+     All reference the same up-to-date profile
 ```
 
 ---
 
-## DevIDが提供するもの
+## What DevID Provides
 
-DevIDは**ソフトウェアエンジニア特化のIDaaS（Identity as a Service）**です。  
-転職サイトに対して、認証・プロファイルデータ・スキル検証をまとめて提供するAPIを一本提供します。  
-転職サイト側はこれをゼロから構築する必要がなくなります。
+DevID is an **IDaaS (Identity as a Service) purpose-built for software engineers**.  
+It offers job platforms a single API for authentication, profile data, and skill verification — so they don't have to build these from scratch.
 
-### エンジニアにとって
-- **ポートフォリオ一括管理**: GitHubでログインするだけでプロファイルが自動生成される
-- **データは自分のもの**: どのサービスに何を公開するかを細かく制御できる
-- **一度更新すれば全サイトに反映** *(Phase 2〜)*: スキルを変更すると、連携中のすべてのサービスに自動同期
+### For Engineers
+- **Unified portfolio**: Sign in with GitHub and your profile is automatically generated
+- **Own your data**: Fine-grained control over what each service can see
+- **Update once, sync everywhere** *(Phase 2)*: Changes propagate to all connected services automatically
 
-### 転職サイトにとって
-- **登録初日から豊富なプロファイル**: 一文字も入力していないユーザーにも構造化されたスキルデータが存在する
-- **すぐに使える認証** *(Phase 2〜)*: OIDC連携により、DevIDをIdPとして数時間で導入できる
-- **Webhookによるリアルタイム通知** *(Phase 2〜)*: 候補者のプロファイルが更新された瞬間に通知を受け取れる
+### For Job Platforms
+- **Rich profiles from day one**: Structured skill data exists even for users who haven't typed a single character
+- **Drop-in authentication** *(Phase 2)*: Integrate DevID as an IdP via OIDC in hours, not weeks
+- **Real-time webhooks** *(Phase 2)*: Get notified the moment a candidate updates their profile
 
 ---
 
-## アーキテクチャ
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
 │                  DevID Platform                  │
 │                                                  │
 │  ┌─────────────┐   ┌──────────────────────────┐  │
-│  │  認証レイヤー │   │   プロファイルAPI (Rust)  │  │
-│  │  (OIDC/     │◄──│  - GitHubデータ取込       │  │
-│  │   OAuth2)   │   │  - スキルスキーマ          │  │
-│  └─────────────┘   │  - Webhookディスパッチャー │  │
+│  │  Auth Layer  │   │   Profile API (Rust)     │  │
+│  │  (OIDC/     │◄──│  - GitHub data ingestion  │  │
+│  │   OAuth2)   │   │  - Skill schema           │  │
+│  └─────────────┘   │  - Webhook dispatcher     │  │
 │                    └──────────────────────────┘  │
 │                              │                   │
 │                   ┌──────────────────┐            │
@@ -64,65 +65,65 @@ DevIDは**ソフトウェアエンジニア特化のIDaaS（Identity as a Servic
 │                   └──────────────────┘            │
 └─────────────────────────────────────────────────┘
           ▲                        ▲
-     転職サイトA               転職サイトB
-    （MAU課金）               （MAU課金）
+     Platform A               Platform B
+    (MAU-based billing)     (MAU-based billing)
 ```
 
-**Rustで実装**。リアルタイムプロファイル同期と大量Webhook配信のパフォーマンス要件に対応するため。
+**Built with Rust** for the performance demands of real-time profile sync and high-volume webhook delivery.
 
-## ロードマップ
+## Roadmap
 
-### Phase 1 — 基盤構築（現在）
-- [ ] GitHub OAuth連携
-- [ ] GitHubデータからの自動プロファイル生成
-- [ ] 基本プロファイルCRUD API
-- [ ] Docker Composeでのローカル起動環境
+### Phase 1 — Foundation (current)
+- [ ] GitHub OAuth integration
+- [ ] Auto-generate profiles from GitHub data
+- [ ] Basic profile CRUD API
+- [ ] Local dev environment via Docker Compose
 
-### Phase 2 — プラットフォーム化
-- [ ] OIDCサーバー（転職サイトがDevIDをIdPとして利用）
-- [ ] 配信保証付きWebhookディスパッチャー
-- [ ] OpenAPI仕様 + 転職サイト向けTypeScript SDK
-- [ ] スキルスキーマRFC（コミュニティ公開・議論）
+### Phase 2 — Platform
+- [ ] OIDC server (job platforms use DevID as an IdP)
+- [ ] Webhook dispatcher with delivery guarantees
+- [ ] OpenAPI spec + TypeScript SDK for job platforms
+- [ ] Skill schema RFC (open community discussion)
 
-### Phase 3 — エコシステム拡大
-- [ ] Zenn / Qiita / Stack Overflow連携
-- [ ] クラウドホスティング版リリース
-- [ ] 転職サイト向け分析ダッシュボード
-
----
-
-## コントリビューション
-
-特に以下の領域で世界中の知見を求めています:
-
-- **スキルスキーマ設計** — グローバルに通用するスキル定義はどうあるべきか？（[RFC議論 →](./docs/rfcs/)）
-- **各国のプラットフォーム連携** — あなたの地域で重要なサービスは何か？
-- **セキュリティレビュー** — 認証レイヤーは多くの目で確認する必要がある
-
-詳細は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
+### Phase 3 — Ecosystem
+- [ ] Zenn / Qiita / Stack Overflow integrations
+- [ ] Managed cloud hosting
+- [ ] Analytics dashboard for job platforms
 
 ---
 
-## RFCプロセス
+## Contributing
 
-重要な設計判断はすべてオープンに行います。  
-実装前に `docs/rfcs/` にRFCとして提案し、コミュニティで議論します。
+We're looking for global expertise in these areas:
 
-現在オープンなRFC:
-- `RFC-001`: スキルスキーマ v1 設計
-- `RFC-002`: Webhook配信保証（at-least-once vs exactly-once）
+- **Skill schema design** — What should a universal skill taxonomy look like? ([Join the RFC discussion →](./docs/rfcs/))
+- **Regional platform integrations** — What services matter in your region?
+- **Security review** — The auth layer needs many eyes
 
----
-
-## ライセンス
-
-コア機能 (`crates/`) — Apache 2.0  
-クラウド専用機能 (`cloud/`) — プロプライエタリ
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
 ---
 
-## なぜRustか
+## RFC Process
 
-- **Webhookのスループット**: 数百の転職サイトへの並列配信には非同期処理の性能が必要
-- **型安全性**: プロファイルスキーマの整合性をランタイムではなくコンパイル時に保証できる
-- **長期的な信頼性**: 認証基盤にはGCポーズのないメモリ安全性が求められる
+All major design decisions are made in the open.  
+Proposals go to `docs/rfcs/` for community discussion before implementation.
+
+Open RFCs:
+- `RFC-001`: Skill Schema v1 Design
+- `RFC-002`: Webhook Delivery Guarantees (at-least-once vs exactly-once)
+
+---
+
+## License
+
+Core (`crates/`) — Apache 2.0  
+Cloud-only features (`cloud/`) — Proprietary
+
+---
+
+## Why Rust?
+
+- **Webhook throughput**: Parallel delivery to hundreds of platforms demands async performance
+- **Type safety**: Profile schema consistency enforced at compile time, not runtime
+- **Long-term reliability**: An auth platform needs memory safety without GC pauses
