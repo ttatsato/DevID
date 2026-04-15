@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-pub mod resume;
-pub mod skill_aggregation;
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SkillCategory {
