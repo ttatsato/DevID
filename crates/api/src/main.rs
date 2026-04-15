@@ -1,6 +1,7 @@
 mod auth;
 mod db;
 mod portfolio;
+mod profile;
 mod state;
 
 use axum::{extract::Query, routing::get, Json, Router};
@@ -81,6 +82,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/dict/skills", get(skills_suggest))
         .route("/api/dict/certs", get(certs_suggest))
         .merge(auth::routes())
+        .merge(profile::routes())
         .merge(portfolio::routes())
         .with_state(app_state)
         .layer(cors)

@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { EmploymentForm } from "../components/EmploymentForm";
+import { ProfileForm } from "../components/ProfileForm";
 import { SkillExperienceTable } from "../components/SkillExperienceTable";
 import {
   createPortfolio,
   fetchMyPortfolio,
   fetchSkillExperience,
   getMe,
+  getMyProfile,
   logout,
 } from "../lib/api";
-import type { Employment, SkillExperience, User } from "../lib/types";
+import type { Employment, Profile, SkillExperience, User } from "../lib/types";
 
 const newEmployment = (): Employment => ({
   id: crypto.randomUUID(),
@@ -25,6 +27,7 @@ const newEmployment = (): Employment => ({
 
 export default function Page() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [employments, setEmployments] = useState<Employment[]>([newEmployment()]);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ id: string; experience: SkillExperience[] } | null>(null);
@@ -35,7 +38,11 @@ export default function Page() {
       .then(async (u) => {
         setUser(u);
         if (u) {
-          const existing = await fetchMyPortfolio();
+          const [existing, p] = await Promise.all([
+            fetchMyPortfolio(),
+            getMyProfile(),
+          ]);
+          setProfile(p);
           if (existing && existing.employments.length > 0) {
             setEmployments(existing.employments);
           }
@@ -67,6 +74,7 @@ export default function Page() {
   const handleLogout = async () => {
     await logout();
     setUser(null);
+    setProfile(null);
     setEmployments([newEmployment()]);
     setResult(null);
   };
@@ -102,7 +110,9 @@ export default function Page() {
         <button onClick={handleLogout} style={logoutBtn}>ログアウト</button>
       </header>
 
-      <h1>ポートフォリオ登録</h1>
+      {profile && <ProfileForm initial={profile} />}
+
+      <h2 style={{ marginTop: 32 }}>職務経歴</h2>
       <p className="muted">
         所属（会社）と案件を入力して保存すると、スキルごとの経験期間が自動集計されます。
       </p>

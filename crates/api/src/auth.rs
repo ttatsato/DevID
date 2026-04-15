@@ -227,6 +227,7 @@ async fn upsert_user(pool: &PgPool, gh: GitHubUser) -> Result<User, AuthError> {
     }
 
     let id = Uuid::new_v4();
+    let mut tx = pool.begin().await?;
     sqlx::query(
         "INSERT INTO users (id, github_id, username, name, avatar_url, email) \
          VALUES ($1, $2, $3, $4, $5, $6)",
@@ -237,8 +238,18 @@ async fn upsert_user(pool: &PgPool, gh: GitHubUser) -> Result<User, AuthError> {
     .bind(&gh.name)
     .bind(&gh.avatar_url)
     .bind(&gh.email)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    sqlx::query(
+        "INSERT INTO profiles (user_id, display_name, avatar_url) \
+         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+    )
+    .bind(id)
+    .bind(&gh.name)
+    .bind(&gh.avatar_url)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
 
     Ok(User {
         id,
