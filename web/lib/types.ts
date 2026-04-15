@@ -7,6 +7,33 @@ export type User = {
   email: string | null;
 };
 
+export type SocialPlatform =
+  | "github"
+  | "twitter"
+  | "linkedin"
+  | "zenn"
+  | "qiita"
+  | "website"
+  | "blog"
+  | "other";
+
+export type SocialLink = {
+  platform: SocialPlatform | string;
+  url: string;
+  label?: string | null;
+};
+
+export type Profile = {
+  display_name: string | null;
+  headline: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  location: string | null;
+  contact_email: string | null;
+  contact_email_public: boolean;
+  social_links: SocialLink[];
+};
+
 export type SkillCategory =
   | "language"
   | "framework"

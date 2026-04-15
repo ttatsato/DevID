@@ -1,4 +1,26 @@
-import type { Employment, PortfolioResponse, SkillExperience, User } from "./types";
+import type {
+  Employment,
+  PortfolioResponse,
+  Profile,
+  SkillExperience,
+  User,
+} from "./types";
+
+export async function getMyProfile(): Promise<Profile> {
+  const r = await fetch("/api/me/profile");
+  if (!r.ok) throw new Error(`getMyProfile failed: ${r.status}`);
+  return r.json();
+}
+
+export async function updateMyProfile(p: Profile): Promise<Profile> {
+  const r = await fetch("/api/me/profile", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(p),
+  });
+  if (!r.ok) throw new Error(`updateMyProfile failed: ${r.status}`);
+  return r.json();
+}
 
 export async function getMe(): Promise<User | null> {
   const r = await fetch("/api/me");
