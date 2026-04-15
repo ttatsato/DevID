@@ -27,3 +27,5 @@ target
 /web/.env*.local
 .DS_Store
 
+
+.env
