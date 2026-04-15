@@ -13,24 +13,25 @@ pub struct GitHubUserData {
 
 /// 新規ならユーザー + 空プロフィールを作成、既存なら GitHub の最新情報で更新する。
 pub async fn upsert_from_github(pool: &PgPool, gh: GitHubUserData) -> sqlx::Result<User> {
-    let existing: Option<User> = sqlx::query_as(
+    let existing = sqlx::query_as!(
+        User,
         "SELECT id, github_id, username, name, avatar_url, email \
          FROM users WHERE github_id = $1",
+        gh.id
     )
-    .bind(gh.id)
     .fetch_optional(pool)
     .await?;
 
     if let Some(mut u) = existing {
-        sqlx::query(
+        sqlx::query!(
             "UPDATE users SET username=$2, name=$3, avatar_url=$4, email=$5, updated_at=NOW() \
              WHERE id=$1",
+            u.id,
+            gh.login,
+            gh.name,
+            gh.avatar_url,
+            gh.email
         )
-        .bind(u.id)
-        .bind(&gh.login)
-        .bind(&gh.name)
-        .bind(&gh.avatar_url)
-        .bind(&gh.email)
         .execute(pool)
         .await?;
         u.username = gh.login;
@@ -42,25 +43,25 @@ pub async fn upsert_from_github(pool: &PgPool, gh: GitHubUserData) -> sqlx::Resu
 
     let id = Uuid::new_v4();
     let mut tx = pool.begin().await?;
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO users (id, github_id, username, name, avatar_url, email) \
          VALUES ($1, $2, $3, $4, $5, $6)",
+        id,
+        gh.id,
+        gh.login,
+        gh.name,
+        gh.avatar_url,
+        gh.email
     )
-    .bind(id)
-    .bind(gh.id)
-    .bind(&gh.login)
-    .bind(&gh.name)
-    .bind(&gh.avatar_url)
-    .bind(&gh.email)
     .execute(&mut *tx)
     .await?;
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO profiles (user_id, display_name, avatar_url) \
          VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        id,
+        gh.name,
+        gh.avatar_url
     )
-    .bind(id)
-    .bind(&gh.name)
-    .bind(&gh.avatar_url)
     .execute(&mut *tx)
     .await?;
     tx.commit().await?;
