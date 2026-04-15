@@ -1,180 +1,57 @@
-# Yokogushi 開発環境セットアップ
-
-ローカルでの開発手順をまとめます。
-
----
+# Yokogushi 開発環境
 
 ## 必要なもの
 
-| ツール | バージョン | 用途 |
-|---|---|---|
-| Rust | 1.75+ (stable) | APIサーバー |
-| Node.js | 20+ | フロントエンド |
-| npm | 10+ | パッケージ管理 |
-| Docker | 20+ | PostgreSQL コンテナ |
+Rust 1.75+ / Node.js 20+ / Docker
 
-Rustのインストール:
+初回のみ
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cargo install sqlx-cli --no-default-features --features rustls,postgres
+cp .env.example .env
+# .env に GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET を設定
 ```
 
----
-
-## ディレクトリ構成
-
-```
-yokogushi/
-├── Cargo.toml              # Rust workspace
-├── crates/
-│   ├── core/               # ドメイン型 (Skill, Certification)
-│   ├── dict/               # スキル/資格マスタ辞書 + サジェスト関数
-│   └── api/                # axum HTTPサーバー
-├── web/                    # Next.js フロントエンド
-├── docker-compose.yml      # PostgreSQL
-└── crates/api/migrations/  # sqlx マイグレーション
-```
-
----
-
-## 起動方法
-
-### 1. PostgreSQL（Docker）
-
-ポート: **5434**（ホスト側。コンテナ内は標準の5432）
+## 起動
 
 ```bash
-docker compose up -d
-docker compose ps                       # 状態確認
-docker compose logs -f postgres         # ログ
-docker compose down                     # 停止
-docker compose down -v                  # データごと削除
+docker compose up -d          # Postgres (5434)
+cargo run -p yokogushi-api    # API (3001)
+cd web && npm run dev         # Frontend (3000)
 ```
 
-接続情報
+http://localhost:3000 を開く。
 
-```
-host: localhost
-port: 5434
-user: yokogushi
-pass: yokogushi
-db:   yokogushi
+## 開発ルール
+
+- **SQLはマクロ版** (`sqlx::query!` / `query_as!`) を使う。SQL追加・変更時は必ず `cargo sqlx prepare --workspace` を実行して `.sqlx/` を commit
+- **DB操作は `repo` 層に集約**。ハンドラから直接 `sqlx::query!` を呼ばない
+- **repo 関数命名**: `Option<T>` → `find_`、`Vec<T>` → `list_`、`bool` → `exists_`、書き込みは動詞 (`upsert_for_user`)。ユーザースコープは `_by_user` / `_for_user` サフィックスで `user_id` を必須引数に
+- **ドメインロジックは `yokogushi-core`**（I/O なしの純粋関数）
+- **マイグレーション**: `sqlx migrate add <name>`
+
+## コマンド
+
+```bash
+cargo build              # DATABASE_URL があればオンライン検証
+SQLX_OFFLINE=true cargo build   # DB なしでビルド
+cargo test
+cargo fmt
+cargo clippy --all-targets
+cd web && npx tsc --noEmit
 ```
 
-psql で入る:
+Postgres に入る
 
 ```bash
 docker exec -it yokogushi-postgres psql -U yokogushi -d yokogushi
 ```
 
-### 2. APIサーバー（Rust / axum）
+## GitHub OAuth App 設定
 
-ポート: **3001**
+https://github.com/settings/developers → New OAuth App
 
-`.env` を作成（任意。未設定でもデフォルト値で動作）
+- Homepage URL: `http://localhost:3000`
+- Authorization callback URL: `http://localhost:3000/api/auth/github/callback`
 
-```bash
-cp .env.example .env
-```
-
-起動
-
-```bash
-cargo build                  # 初回ビルド
-cargo run -p yokogushi-api   # 起動 (起動時に sqlx migrate を自動実行)
-```
-
-ログレベルを変えたいとき:
-
-```bash
-RUST_LOG=debug cargo run -p yokogushi-api
-```
-
-動作確認:
-
-```bash
-curl 'http://localhost:3001/api/dict/skills?q=ja&limit=5'
-curl 'http://localhost:3001/api/dict/certs?q=基本'
-```
-
-### 2. フロントエンド（Next.js）
-
-ポート: **3000**
-
-```bash
-cd web
-npm install      # 初回のみ
-npm run dev
-```
-
-ブラウザで http://localhost:3000 を開く。
-
-`next.config.mjs` の rewrite により `/api/*` は自動的に `http://localhost:3001` へプロキシされるため、CORS設定なしで同一オリジン扱いになります。
-
-API向き先を変えたい場合:
-
-```bash
-API_BASE_URL=http://localhost:4000 npm run dev
-```
-
----
-
-## よく使うコマンド
-
-| 目的 | コマンド |
-|---|---|
-| Rust 全体ビルド | `cargo build` |
-| Rust 全体テスト | `cargo test` |
-| 辞書crateのテストのみ | `cargo test -p yokogushi-dict` |
-| Rust フォーマット | `cargo fmt` |
-| Rust lint | `cargo clippy --all-targets` |
-| フロント型チェック | `cd web && npx tsc --noEmit` |
-| フロントビルド | `cd web && npm run build` |
-
----
-
-## API エンドポイント（現状）
-
-| メソッド | パス | 説明 |
-|---|---|---|
-| GET | `/api/dict/skills?q=<query>&limit=<n>` | スキルサジェスト |
-| GET | `/api/dict/certs?q=<query>&limit=<n>` | 資格サジェスト |
-| GET | `/api/auth/github/login` | GitHub OAuth 認可フローへリダイレクト |
-| GET | `/api/auth/github/callback` | OAuth コールバック（自動処理） |
-| POST | `/api/auth/logout` | ログアウト（セッション削除） |
-| GET | `/api/me` | 現在のユーザー情報（未ログインは401） |
-| GET | `/api/me/portfolio` | 自分のポートフォリオ取得 |
-| POST | `/api/portfolios` | 自分のポートフォリオ保存（**要ログイン**） |
-| GET | `/api/portfolios/:id` | ポートフォリオ取得（公開） |
-| GET | `/api/portfolios/:id/skill-experience` | スキル経験集計 |
-
-### GitHub OAuth Appの設定
-
-1. https://github.com/settings/developers → **New OAuth App**
-2. 以下を設定
-   - **Homepage URL**: `http://localhost:3000`
-   - **Authorization callback URL**: `http://localhost:3000/api/auth/github/callback`
-3. 発行された Client ID / Client Secret を `.env` に転記
-
-```bash
-cp .env.example .env
-# .env を編集して GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET を設定
-```
-
-コールバックURLは**Next.jsのリライト経由**（3000）にしているため、Cookieが同一オリジンで自然に流れます。
-
-`limit` は省略時 10。クエリは前方一致が最優先、部分一致がその次にランクされます。エイリアス（例: `k8s` → Kubernetes）にもマッチします。
-
----
-
-## トラブルシュート
-
-### `cargo run` が遅い
-初回コンパイルは数分かかります。2回目以降はインクリメンタルビルドで数秒です。
-
-### フロントから `/api/...` が 404
-APIサーバー（3001）が起動していません。`cargo run -p yokogushi-api` を別ターミナルで実行してください。
-
-### ポート競合
-- `yokogushi-api`: `crates/api/src/main.rs` の `bind("0.0.0.0:3001")` を変更
-- `web`: `web/package.json` の `dev` スクリプトで `-p` を変更
+Client ID / Client Secret を `.env` に転記。
