@@ -59,7 +59,7 @@ async fn get_my_portfolio(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
 ) -> Result<Json<Option<PortfolioResponse>>, ApiError> {
-    let record = repo::portfolio::get_by_user(&state.db, user.id).await?;
+    let record = repo::portfolio::find_by_user(&state.db, user.id).await?;
     Ok(Json(record.map(|r| PortfolioResponse {
         id: r.id,
         employments: r.employments,
@@ -70,7 +70,7 @@ async fn get_portfolio(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PortfolioResponse>, ApiError> {
-    let record = repo::portfolio::get_public(&state.db, id)
+    let record = repo::portfolio::find_by_id(&state.db, id)
         .await?
         .ok_or(ApiError::NotFound)?;
     Ok(Json(PortfolioResponse {
@@ -83,10 +83,10 @@ async fn get_skill_experience(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<SkillExperience>>, ApiError> {
-    if !repo::portfolio::exists(&state.db, id).await? {
+    if !repo::portfolio::exists_by_id(&state.db, id).await? {
         return Err(ApiError::NotFound);
     }
-    let items = repo::portfolio::get_skill_experience(&state.db, id).await?;
+    let items = repo::portfolio::list_skill_experience(&state.db, id).await?;
     Ok(Json(items))
 }
 

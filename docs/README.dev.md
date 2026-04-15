@@ -85,26 +85,56 @@ sqlx::query("SELECT ... FROM portfolios WHERE user_id = $1")
 
 移行する際は `cargo sqlx prepare` → `.sqlx/` を commit、の運用で済む。
 
-### 3. 認可は handler ＋ repo の二段で守る
+### 3. 層ごとの責務を明確に分ける
 
-- handler: `AuthUser` 抽出子で認証済みユーザーを取得
-- repo: user スコープ関数で `user_id` を必ず WHERE に入れる
+- **repo 層**: 「どうデータを取るか」だけを担う。**認可・公開判定など ドメインのルールは持たない**
+- **handler 層**: 「誰がこのデータを見ていいか」を判断する。`AuthUser` 抽出子で認証、必要に応じて所有権チェック
 
-**RLS は現状導入しない**。理由は `Phase 3 以降のプラットフォーム連携で導入検討`（[#16](https://github.com/ttatsato/yokogushi/issues/16) 参照）。
+repo 関数の名前にドメイン語（`public` / `private` など）を入れない。関数内部でやっていることを素直に反映した名前にする。
 
-### 4. マイグレーション
+```rust
+// ❌ Bad: "public" はハンドラ層の関心事
+pub async fn get_public(pool, id) -> ...
+
+// ✅ Good: 「idで取る」という実装通りの名前
+pub async fn find_by_id(pool, id) -> ...
+```
+
+ハンドラ側で「この id を未認証の訪問者に見せてよいか」を判定する（公開設定は #9 で導入）。
+
+### 4. repo 関数の命名規則
+
+戻り値の形が名前から読める命名にする。
+
+| 戻り値 | プレフィックス | 例 |
+|---|---|---|
+| `Option<T>` | `find_` | `find_by_user`, `find_by_id` |
+| `Vec<T>` | `list_` | `list_skill_experience` |
+| `bool` | `exists_` | `exists_by_id` |
+| `T`（必ず存在、なければエラー） | `get_` | (現状未使用) |
+| 書き込み | 動詞 | `create`, `delete`, `upsert_for_user` |
+
+ユーザースコープのクエリはスコープ名をサフィックスに含める（`_by_user`, `_for_user`）。
+
+### 5. 認可の現状
+
+- ログインユーザーに紐づくデータ（POST/PUT/GET自分のデータ）: `AuthUser` 抽出子 + repo の `_by_user` / `_for_user` 関数で user_id を必須化
+- 他人のデータ（将来の公開ポートフォリオ閲覧）: **現状は id さえあれば誰でも見られる**。公開設定（visibility）は [#9](https://github.com/ttatsato/yokogushi/issues/9) で導入
+- プラットフォーム連携（Phase 3）での RLS 導入検討: [#16](https://github.com/ttatsato/yokogushi/issues/16)
+
+### 6. マイグレーション
 
 - ファイル名: `NNNN_description.sql`（ゼロ埋め4桁）
 - **破壊的変更**（DROP/ALTER で既存データに影響）は開発フェーズのみ許容
 - 本番運用開始後は additive-only（追加のみ）を原則とする
 
-### 5. ドメインロジックは `yokogushi-core` に置く
+### 7. ドメインロジックは `yokogushi-core` に置く
 
 - 純粋関数（I/Oなし）なのでテストが書きやすい
 - WASM化して将来クライアント共有できる設計を保つ
 - `api` crate からは依存して使う、逆はしない
 
-### 6. エラー処理
+### 8. エラー処理
 
 - handler は型付きエラー（`ApiError` / `AuthError` / `ProfileError`）を返す
 - `IntoResponse` で HTTP ステータスに変換、ログは `tracing::error!` で出す

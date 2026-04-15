@@ -10,8 +10,7 @@ pub struct PortfolioRecord {
     pub employments: Vec<Employment>,
 }
 
-/// ログイン中ユーザーのポートフォリオを取得（1ユーザー1件）。
-pub async fn get_by_user(pool: &PgPool, user_id: Uuid) -> sqlx::Result<Option<PortfolioRecord>> {
+pub async fn find_by_user(pool: &PgPool, user_id: Uuid) -> sqlx::Result<Option<PortfolioRecord>> {
     let row: Option<(Uuid, SqlxJson<Vec<Employment>>)> =
         sqlx::query_as("SELECT id, data FROM portfolios WHERE user_id = $1")
             .bind(user_id)
@@ -23,8 +22,7 @@ pub async fn get_by_user(pool: &PgPool, user_id: Uuid) -> sqlx::Result<Option<Po
     }))
 }
 
-/// ID 指定の公開ポートフォリオ取得（認可は別途 #9 の公開設定Issueで導入）。
-pub async fn get_public(pool: &PgPool, id: Uuid) -> sqlx::Result<Option<PortfolioRecord>> {
+pub async fn find_by_id(pool: &PgPool, id: Uuid) -> sqlx::Result<Option<PortfolioRecord>> {
     let row: Option<(SqlxJson<Vec<Employment>>,)> =
         sqlx::query_as("SELECT data FROM portfolios WHERE id = $1")
             .bind(id)
@@ -36,7 +34,6 @@ pub async fn get_public(pool: &PgPool, id: Uuid) -> sqlx::Result<Option<Portfoli
     }))
 }
 
-/// ユーザーのポートフォリオをupsert。集計結果も同トランザクションで書き換える。
 pub async fn upsert_for_user(
     pool: &PgPool,
     user_id: Uuid,
@@ -82,7 +79,7 @@ pub async fn upsert_for_user(
     Ok(id)
 }
 
-pub async fn exists(pool: &PgPool, id: Uuid) -> sqlx::Result<bool> {
+pub async fn exists_by_id(pool: &PgPool, id: Uuid) -> sqlx::Result<bool> {
     let row: Option<(Uuid,)> = sqlx::query_as("SELECT id FROM portfolios WHERE id = $1")
         .bind(id)
         .fetch_optional(pool)
@@ -90,7 +87,7 @@ pub async fn exists(pool: &PgPool, id: Uuid) -> sqlx::Result<bool> {
     Ok(row.is_some())
 }
 
-pub async fn get_skill_experience(
+pub async fn list_skill_experience(
     pool: &PgPool,
     portfolio_id: Uuid,
 ) -> sqlx::Result<Vec<SkillExperience>> {

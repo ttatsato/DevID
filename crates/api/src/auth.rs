@@ -55,7 +55,7 @@ impl FromRequestParts<AppState> for AuthUser {
             .ok_or(StatusCode::UNAUTHORIZED)?
             .value()
             .to_string();
-        let user = repo::session::find_user(&state.db, &session_id)
+        let user = repo::session::find_user_by_session_id(&state.db, &session_id)
             .await
             .map_err(|e| {
                 tracing::warn!("session lookup failed: {e}");

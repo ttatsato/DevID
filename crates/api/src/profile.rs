@@ -41,7 +41,7 @@ async fn get_my_profile(
     State(state): State<AppState>,
     AuthUser(user): AuthUser,
 ) -> Result<Json<Profile>, ProfileError> {
-    let p = repo::profile::get_by_user(&state.db, user.id)
+    let p = repo::profile::find_by_user(&state.db, user.id)
         .await?
         .unwrap_or_default();
     Ok(Json(p))

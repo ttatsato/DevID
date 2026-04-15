@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::profile::{Profile, SocialLink};
 
-pub async fn get_by_user(pool: &PgPool, user_id: Uuid) -> sqlx::Result<Option<Profile>> {
+pub async fn find_by_user(pool: &PgPool, user_id: Uuid) -> sqlx::Result<Option<Profile>> {
     let row: Option<ProfileRow> = sqlx::query_as(
         "SELECT display_name, headline, bio, avatar_url, location, contact_email, \
                 contact_email_public, social_links \

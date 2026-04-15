@@ -29,7 +29,7 @@ pub async fn delete(pool: &PgPool, session_id: &str) -> sqlx::Result<()> {
 }
 
 /// セッションIDから現在のユーザーを解決。期限切れは None。
-pub async fn find_user(pool: &PgPool, session_id: &str) -> sqlx::Result<Option<User>> {
+pub async fn find_user_by_session_id(pool: &PgPool, session_id: &str) -> sqlx::Result<Option<User>> {
     sqlx::query_as(
         "SELECT u.id, u.github_id, u.username, u.name, u.avatar_url, u.email \
          FROM sessions s JOIN users u ON u.id = s.user_id \
