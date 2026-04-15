@@ -139,9 +139,29 @@ API_BASE_URL=http://localhost:4000 npm run dev
 |---|---|---|
 | GET | `/api/dict/skills?q=<query>&limit=<n>` | スキルサジェスト |
 | GET | `/api/dict/certs?q=<query>&limit=<n>` | 資格サジェスト |
-| POST | `/api/portfolios` | ポートフォリオ登録（`{employments: [...]}`） |
-| GET | `/api/portfolios/:id` | ポートフォリオ取得 |
+| GET | `/api/auth/github/login` | GitHub OAuth 認可フローへリダイレクト |
+| GET | `/api/auth/github/callback` | OAuth コールバック（自動処理） |
+| POST | `/api/auth/logout` | ログアウト（セッション削除） |
+| GET | `/api/me` | 現在のユーザー情報（未ログインは401） |
+| GET | `/api/me/portfolio` | 自分のポートフォリオ取得 |
+| POST | `/api/portfolios` | 自分のポートフォリオ保存（**要ログイン**） |
+| GET | `/api/portfolios/:id` | ポートフォリオ取得（公開） |
 | GET | `/api/portfolios/:id/skill-experience` | スキル経験集計 |
+
+### GitHub OAuth Appの設定
+
+1. https://github.com/settings/developers → **New OAuth App**
+2. 以下を設定
+   - **Homepage URL**: `http://localhost:3000`
+   - **Authorization callback URL**: `http://localhost:3000/api/auth/github/callback`
+3. 発行された Client ID / Client Secret を `.env` に転記
+
+```bash
+cp .env.example .env
+# .env を編集して GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET を設定
+```
+
+コールバックURLは**Next.jsのリライト経由**（3000）にしているため、Cookieが同一オリジンで自然に流れます。
 
 `limit` は省略時 10。クエリは前方一致が最優先、部分一致がその次にランクされます。エイリアス（例: `k8s` → Kubernetes）にもマッチします。
 

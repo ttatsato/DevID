@@ -1,4 +1,24 @@
-import type { Employment, SkillExperience } from "./types";
+import type { Employment, PortfolioResponse, SkillExperience, User } from "./types";
+
+export async function getMe(): Promise<User | null> {
+  const r = await fetch("/api/me");
+  if (r.status === 401) return null;
+  if (!r.ok) throw new Error(`getMe failed: ${r.status}`);
+  return r.json();
+}
+
+export async function logout(): Promise<void> {
+  const r = await fetch("/api/auth/logout", { method: "POST" });
+  if (!r.ok) throw new Error(`logout failed: ${r.status}`);
+}
+
+export async function fetchMyPortfolio(): Promise<PortfolioResponse | null> {
+  const r = await fetch("/api/me/portfolio");
+  if (!r.ok) throw new Error(`fetchMyPortfolio failed: ${r.status}`);
+  const body: PortfolioResponse | null = await r.json();
+  return body;
+}
+
 
 export async function createPortfolio(
   employments: Employment[]
