@@ -1,3 +1,12 @@
+export type User = {
+  id: string;
+  github_id: number;
+  username: string;
+  name: string | null;
+  avatar_url: string | null;
+  email: string | null;
+};
+
 export type SkillCategory =
   | "language"
   | "framework"
@@ -88,4 +97,9 @@ export type SkillExperience = {
   primary_months: number;
   last_used: string;
   project_count: number;
+};
+
+export type PortfolioResponse = {
+  id: string;
+  employments: Employment[];
 };
