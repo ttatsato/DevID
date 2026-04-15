@@ -3,6 +3,16 @@ use uuid::Uuid;
 
 use crate::auth::User;
 
+pub async fn find_by_username(pool: &PgPool, username: &str) -> sqlx::Result<Option<User>> {
+    sqlx::query_as!(
+        User,
+        "SELECT id, github_id, username, name, avatar_url, email FROM users WHERE username = $1",
+        username
+    )
+    .fetch_optional(pool)
+    .await
+}
+
 pub struct GitHubUserData {
     pub id: i64,
     pub login: String,

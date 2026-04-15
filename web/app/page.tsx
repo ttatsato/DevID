@@ -104,7 +104,11 @@ export default function Page() {
           )}
           <div style={{ fontSize: 14 }}>
             <div style={{ fontWeight: 600 }}>{user.name ?? user.username}</div>
-            <div className="muted" style={{ fontSize: 12 }}>@{user.username}</div>
+            <div className="muted" style={{ fontSize: 12 }}>
+              <a href={`/u/${user.username}`} target="_blank" rel="noopener noreferrer">
+                /u/{user.username} ↗
+              </a>
+            </div>
           </div>
         </div>
         <button onClick={handleLogout} style={logoutBtn}>ログアウト</button>
