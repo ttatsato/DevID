@@ -147,13 +147,15 @@ async fn get_skill_experience(
 
     let result = rows
         .into_iter()
-        .map(|(skill_id, total, primary, last_used, count)| SkillExperience {
-            skill_id,
-            total_months: total as u32,
-            primary_months: primary as u32,
-            last_used,
-            project_count: count as u32,
-        })
+        .map(
+            |(skill_id, total, primary, last_used, count)| SkillExperience {
+                skill_id,
+                total_months: total as u32,
+                primary_months: primary as u32,
+                last_used,
+                project_count: count as u32,
+            },
+        )
         .collect();
 
     Ok(Json(result))

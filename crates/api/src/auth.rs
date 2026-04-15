@@ -321,7 +321,9 @@ impl From<sqlx::Error> for AuthError {
 impl IntoResponse for AuthError {
     fn into_response(self) -> axum::response::Response {
         match &self {
-            AuthError::InvalidState => (StatusCode::BAD_REQUEST, "invalid oauth state").into_response(),
+            AuthError::InvalidState => {
+                (StatusCode::BAD_REQUEST, "invalid oauth state").into_response()
+            }
             other => {
                 tracing::error!("auth error: {other:?}");
                 (StatusCode::INTERNAL_SERVER_ERROR, "auth error").into_response()
@@ -329,4 +331,3 @@ impl IntoResponse for AuthError {
         }
     }
 }
-

@@ -52,8 +52,7 @@ async fn main() -> anyhow::Result<()> {
         "postgres://yokogushi:yokogushi@localhost:5434/yokogushi",
     );
     let auth = AuthConfig {
-        github_client_id: std::env::var("GITHUB_CLIENT_ID")
-            .expect("GITHUB_CLIENT_ID must be set"),
+        github_client_id: std::env::var("GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID must be set"),
         github_client_secret: std::env::var("GITHUB_CLIENT_SECRET")
             .expect("GITHUB_CLIENT_SECRET must be set"),
         github_redirect_url: env_or(
