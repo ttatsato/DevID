@@ -11,6 +11,7 @@
 | Rust | 1.75+ (stable) | APIサーバー |
 | Node.js | 20+ | フロントエンド |
 | npm | 10+ | パッケージ管理 |
+| Docker | 20+ | PostgreSQL コンテナ |
 
 Rustのインストール:
 
@@ -29,23 +30,58 @@ yokogushi/
 │   ├── core/               # ドメイン型 (Skill, Certification)
 │   ├── dict/               # スキル/資格マスタ辞書 + サジェスト関数
 │   └── api/                # axum HTTPサーバー
-└── web/                    # Next.js フロントエンド
+├── web/                    # Next.js フロントエンド
+├── docker-compose.yml      # PostgreSQL
+└── crates/api/migrations/  # sqlx マイグレーション
 ```
 
 ---
 
 ## 起動方法
 
-### 1. APIサーバー（Rust / axum）
+### 1. PostgreSQL（Docker）
+
+ポート: **5434**（ホスト側。コンテナ内は標準の5432）
+
+```bash
+docker compose up -d
+docker compose ps                       # 状態確認
+docker compose logs -f postgres         # ログ
+docker compose down                     # 停止
+docker compose down -v                  # データごと削除
+```
+
+接続情報
+
+```
+host: localhost
+port: 5434
+user: yokogushi
+pass: yokogushi
+db:   yokogushi
+```
+
+psql で入る:
+
+```bash
+docker exec -it yokogushi-postgres psql -U yokogushi -d yokogushi
+```
+
+### 2. APIサーバー（Rust / axum）
 
 ポート: **3001**
 
-```bash
-# 初回ビルド (依存解決に数分かかります)
-cargo build
+`.env` を作成（任意。未設定でもデフォルト値で動作）
 
-# 起動
-cargo run -p yokogushi-api
+```bash
+cp .env.example .env
+```
+
+起動
+
+```bash
+cargo build                  # 初回ビルド
+cargo run -p yokogushi-api   # 起動 (起動時に sqlx migrate を自動実行)
 ```
 
 ログレベルを変えたいとき:
@@ -103,6 +139,9 @@ API_BASE_URL=http://localhost:4000 npm run dev
 |---|---|---|
 | GET | `/api/dict/skills?q=<query>&limit=<n>` | スキルサジェスト |
 | GET | `/api/dict/certs?q=<query>&limit=<n>` | 資格サジェスト |
+| POST | `/api/portfolios` | ポートフォリオ登録（`{employments: [...]}`） |
+| GET | `/api/portfolios/:id` | ポートフォリオ取得 |
+| GET | `/api/portfolios/:id/skill-experience` | スキル経験集計 |
 
 `limit` は省略時 10。クエリは前方一致が最優先、部分一致がその次にランクされます。エイリアス（例: `k8s` → Kubernetes）にもマッチします。
 
