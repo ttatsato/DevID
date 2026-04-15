@@ -2,6 +2,7 @@ mod auth;
 mod db;
 mod portfolio;
 mod profile;
+mod repo;
 mod state;
 
 use axum::{extract::Query, routing::get, Json, Router};

@@ -7,17 +7,14 @@ use axum::{
     Json, Router,
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-use base64::Engine;
-use chrono::{DateTime, Duration, Utc};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
-use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::repo;
 use crate::state::AppState;
 
 const SESSION_COOKIE: &str = "yokogushi_session";
@@ -32,7 +29,7 @@ pub struct AuthConfig {
     pub frontend_url: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct User {
     pub id: Uuid,
     pub github_id: i64,
@@ -58,7 +55,7 @@ impl FromRequestParts<AppState> for AuthUser {
             .ok_or(StatusCode::UNAUTHORIZED)?
             .value()
             .to_string();
-        let user = load_user_by_session(&state.db, &session_id)
+        let user = repo::session::find_user(&state.db, &session_id)
             .await
             .map_err(|e| {
                 tracing::warn!("session lookup failed: {e}");
@@ -135,8 +132,18 @@ async fn github_callback(
         .map_err(|e| AuthError::Oauth(e.to_string()))?;
 
     let gh = fetch_github_user(token.access_token().secret()).await?;
-    let user = upsert_user(&state.db, gh).await?;
-    let session_id = create_session(&state.db, user.id).await?;
+    let user = repo::user::upsert_from_github(
+        &state.db,
+        repo::user::GitHubUserData {
+            id: gh.id,
+            login: gh.login,
+            name: gh.name,
+            avatar_url: gh.avatar_url,
+            email: gh.email,
+        },
+    )
+    .await?;
+    let session_id = repo::session::create(&state.db, user.id).await?;
 
     let jar = jar
         .remove(Cookie::build(OAUTH_STATE_COOKIE).path("/").build())
@@ -157,10 +164,7 @@ async fn logout(
     jar: CookieJar,
 ) -> Result<(CookieJar, StatusCode), AuthError> {
     if let Some(c) = jar.get(SESSION_COOKIE) {
-        sqlx::query("DELETE FROM sessions WHERE id = $1")
-            .bind(c.value())
-            .execute(&state.db)
-            .await?;
+        repo::session::delete(&state.db, c.value()).await?;
     }
     let jar = jar.remove(Cookie::build(SESSION_COOKIE).path("/").build());
     Ok((jar, StatusCode::NO_CONTENT))
@@ -195,123 +199,6 @@ async fn fetch_github_user(token: &str) -> Result<GitHubUser, AuthError> {
     resp.json::<GitHubUser>()
         .await
         .map_err(|e| AuthError::GitHubApi(e.to_string()))
-}
-
-async fn upsert_user(pool: &PgPool, gh: GitHubUser) -> Result<User, AuthError> {
-    let row: Option<UserRow> = sqlx::query_as(
-        "SELECT id, github_id, username, name, avatar_url, email FROM users WHERE github_id = $1",
-    )
-    .bind(gh.id)
-    .fetch_optional(pool)
-    .await?;
-
-    if let Some(r) = row {
-        sqlx::query(
-            "UPDATE users SET username=$2, name=$3, avatar_url=$4, email=$5, updated_at=NOW() WHERE id=$1",
-        )
-        .bind(r.id)
-        .bind(&gh.login)
-        .bind(&gh.name)
-        .bind(&gh.avatar_url)
-        .bind(&gh.email)
-        .execute(pool)
-        .await?;
-        return Ok(User {
-            id: r.id,
-            github_id: gh.id,
-            username: gh.login,
-            name: gh.name,
-            avatar_url: gh.avatar_url,
-            email: gh.email,
-        });
-    }
-
-    let id = Uuid::new_v4();
-    let mut tx = pool.begin().await?;
-    sqlx::query(
-        "INSERT INTO users (id, github_id, username, name, avatar_url, email) \
-         VALUES ($1, $2, $3, $4, $5, $6)",
-    )
-    .bind(id)
-    .bind(gh.id)
-    .bind(&gh.login)
-    .bind(&gh.name)
-    .bind(&gh.avatar_url)
-    .bind(&gh.email)
-    .execute(&mut *tx)
-    .await?;
-    sqlx::query(
-        "INSERT INTO profiles (user_id, display_name, avatar_url) \
-         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-    )
-    .bind(id)
-    .bind(&gh.name)
-    .bind(&gh.avatar_url)
-    .execute(&mut *tx)
-    .await?;
-    tx.commit().await?;
-
-    Ok(User {
-        id,
-        github_id: gh.id,
-        username: gh.login,
-        name: gh.name,
-        avatar_url: gh.avatar_url,
-        email: gh.email,
-    })
-}
-
-async fn create_session(pool: &PgPool, user_id: Uuid) -> Result<String, AuthError> {
-    let session_id = random_token(32);
-    let expires_at: DateTime<Utc> = Utc::now() + Duration::days(SESSION_DAYS);
-    sqlx::query("INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, $3)")
-        .bind(&session_id)
-        .bind(user_id)
-        .bind(expires_at)
-        .execute(pool)
-        .await?;
-    Ok(session_id)
-}
-
-async fn load_user_by_session(pool: &PgPool, session_id: &str) -> sqlx::Result<Option<User>> {
-    let row: Option<UserRow> = sqlx::query_as(
-        "SELECT u.id, u.github_id, u.username, u.name, u.avatar_url, u.email \
-         FROM sessions s JOIN users u ON u.id = s.user_id \
-         WHERE s.id = $1 AND s.expires_at > NOW()",
-    )
-    .bind(session_id)
-    .fetch_optional(pool)
-    .await?;
-    Ok(row.map(Into::into))
-}
-
-fn random_token(bytes: usize) -> String {
-    let mut buf = vec![0u8; bytes];
-    rand::thread_rng().fill_bytes(&mut buf);
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf)
-}
-
-#[derive(sqlx::FromRow)]
-struct UserRow {
-    id: Uuid,
-    github_id: i64,
-    username: String,
-    name: Option<String>,
-    avatar_url: Option<String>,
-    email: Option<String>,
-}
-
-impl From<UserRow> for User {
-    fn from(r: UserRow) -> Self {
-        Self {
-            id: r.id,
-            github_id: r.github_id,
-            username: r.username,
-            name: r.name,
-            avatar_url: r.avatar_url,
-            email: r.email,
-        }
-    }
 }
 
 #[derive(Debug)]

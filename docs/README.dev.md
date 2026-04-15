@@ -27,13 +27,88 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 yokogushi/
 ├── Cargo.toml              # Rust workspace
 ├── crates/
-│   ├── core/               # ドメイン型 (Skill, Certification)
+│   ├── core/               # ドメイン型 (Skill, Certification, Employment...)
 │   ├── dict/               # スキル/資格マスタ辞書 + サジェスト関数
 │   └── api/                # axum HTTPサーバー
+│       ├── src/
+│       │   ├── main.rs
+│       │   ├── state.rs        # AppState
+│       │   ├── auth.rs         # OAuth + セッションハンドラ
+│       │   ├── profile.rs      # プロフィールハンドラ
+│       │   ├── portfolio.rs    # ポートフォリオハンドラ
+│       │   └── repo/           # DB アクセス層（詳細は「開発方針」）
+│       └── migrations/         # sqlx マイグレーション
 ├── web/                    # Next.js フロントエンド
-├── docker-compose.yml      # PostgreSQL
-└── crates/api/migrations/  # sqlx マイグレーション
+└── docker-compose.yml      # PostgreSQL
 ```
+
+---
+
+## 開発方針
+
+継続的に守りたいルール。破るときは必ず理由をコミットメッセージ/PRに残す。
+
+### 1. DBアクセスは Repository 層に集約
+
+**ルール**: ハンドラ（`*.rs`）では SQL を直接書かない。必ず `repo::<domain>::<fn>()` を経由する。
+
+**なぜ**
+- `WHERE user_id = $1` の書き忘れで他ユーザーのデータが出る事故を、**関数シグネチャで防ぐ**
+- クエリ最適化・マイグレーションの影響範囲が localized される
+- 将来テスト化するときに repo 単位でモック/結合テストを書きやすい
+
+**ユーザースコープのクエリは `user_id` を必須引数にする**
+
+```rust
+// ✅ Good - user_id を書き忘れられない
+repo::portfolio::get_by_user(pool, user_id).await?
+
+// ❌ Bad - ハンドラで直接書かない
+sqlx::query("SELECT ... FROM portfolios WHERE user_id = $1")
+    .bind(user_id)
+    .fetch_one(pool).await?
+```
+
+**複合操作（複数テーブル更新）は repo 関数内でトランザクションを閉じる**
+
+呼び出し側はトランザクション境界を意識せず、repo 関数が atomic な単位として振る舞う。
+
+### 2. `sqlx::query` / `query_as` は関数版（ランタイム検証）を使う
+
+現状はコンパイル時検証の `query!` / `query_as!` マクロを**使っていない**。
+
+**理由**: マクロ版は `DATABASE_URL` がコンパイル時に必須 or `.sqlx/` キャッシュの運用が必要で、個人開発フェーズではオーバーヘッドが大きい。
+
+**将来の移行判断**
+- コントリビューターが複数になったタイミング
+- CI でビルド時 SQL 検証を入れたくなったタイミング
+
+移行する際は `cargo sqlx prepare` → `.sqlx/` を commit、の運用で済む。
+
+### 3. 認可は handler ＋ repo の二段で守る
+
+- handler: `AuthUser` 抽出子で認証済みユーザーを取得
+- repo: user スコープ関数で `user_id` を必ず WHERE に入れる
+
+**RLS は現状導入しない**。理由は `Phase 3 以降のプラットフォーム連携で導入検討`（[#16](https://github.com/ttatsato/yokogushi/issues/16) 参照）。
+
+### 4. マイグレーション
+
+- ファイル名: `NNNN_description.sql`（ゼロ埋め4桁）
+- **破壊的変更**（DROP/ALTER で既存データに影響）は開発フェーズのみ許容
+- 本番運用開始後は additive-only（追加のみ）を原則とする
+
+### 5. ドメインロジックは `yokogushi-core` に置く
+
+- 純粋関数（I/Oなし）なのでテストが書きやすい
+- WASM化して将来クライアント共有できる設計を保つ
+- `api` crate からは依存して使う、逆はしない
+
+### 6. エラー処理
+
+- handler は型付きエラー（`ApiError` / `AuthError` / `ProfileError`）を返す
+- `IntoResponse` で HTTP ステータスに変換、ログは `tracing::error!` で出す
+- repo 層は `sqlx::Result` または `anyhow::Result`、handler 境界で変換
 
 ---
 
