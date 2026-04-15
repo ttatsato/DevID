@@ -2,6 +2,7 @@ mod auth;
 mod db;
 mod portfolio;
 mod profile;
+mod public;
 mod repo;
 mod state;
 
@@ -85,6 +86,7 @@ async fn main() -> anyhow::Result<()> {
         .merge(auth::routes())
         .merge(profile::routes())
         .merge(portfolio::routes())
+        .merge(public::routes())
         .with_state(app_state)
         .layer(cors)
         .layer(TraceLayer::new_for_http());

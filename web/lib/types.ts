@@ -130,3 +130,16 @@ export type PortfolioResponse = {
   id: string;
   employments: Employment[];
 };
+
+export type PublicUserResponse = {
+  user: {
+    username: string;
+    name: string | null;
+    avatar_url: string | null;
+  };
+  profile: Profile;
+  portfolio: {
+    id: string;
+    employments: Employment[];
+  } | null;
+};

@@ -2,9 +2,24 @@ import type {
   Employment,
   PortfolioResponse,
   Profile,
+  PublicUserResponse,
   SkillExperience,
   User,
 } from "./types";
+
+/** SSR (Server Components) から直接APIを叩く。Next.jsのrewriteを介さないので絶対URL必須。 */
+export async function fetchPublicUser(
+  username: string
+): Promise<PublicUserResponse | null> {
+  const base = process.env.API_BASE_URL ?? "http://localhost:3001";
+  const r = await fetch(
+    `${base}/api/users/${encodeURIComponent(username)}`,
+    { cache: "no-store" }
+  );
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`fetchPublicUser failed: ${r.status}`);
+  return r.json();
+}
 
 export async function getMyProfile(): Promise<Profile> {
   const r = await fetch("/api/me/profile");
