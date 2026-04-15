@@ -1,4 +1,4 @@
-# DevID — Identity Platform for Software Engineers
+# Yokogushi — Identity Platform for Software Engineers
 
 **English** | [日本語](docs/README.ja.md)
 
@@ -20,7 +20,7 @@ Engineer → Job Platform B (fill it out again)
 Engineer → Job Platform C (fill it out again)
               ↑ Same data entered 3 times, 2 sites go stale
 
-With DevID:
+With Yokogushi:
 Engineer → Sign in with GitHub (once)
                     ↓
      Platform A · Platform B · Platform C
@@ -29,9 +29,9 @@ Engineer → Sign in with GitHub (once)
 
 ---
 
-## What DevID Provides
+## What Yokogushi Provides
 
-DevID is an **IDaaS (Identity as a Service) purpose-built for software engineers**.  
+Yokogushi is an **IDaaS (Identity as a Service) purpose-built for software engineers**.  
 It offers job platforms a single API for authentication, profile data, and skill verification — so they don't have to build these from scratch.
 
 ### For Engineers
@@ -41,7 +41,7 @@ It offers job platforms a single API for authentication, profile data, and skill
 
 ### For Job Platforms
 - **Rich profiles from day one**: Structured skill data exists even for users who haven't typed a single character
-- **Drop-in authentication** *(Phase 2)*: Integrate DevID as an IdP via OIDC in hours, not weeks
+- **Drop-in authentication** *(Phase 2)*: Integrate Yokogushi as an IdP via OIDC in hours, not weeks
 - **Real-time webhooks** *(Phase 2)*: Get notified the moment a candidate updates their profile
 
 ---
@@ -50,7 +50,7 @@ It offers job platforms a single API for authentication, profile data, and skill
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  DevID Platform                  │
+│                Yokogushi Platform                │
 │                                                  │
 │  ┌─────────────┐   ┌──────────────────────────┐  │
 │  │  Auth Layer  │   │   Profile API (Rust)     │  │
@@ -80,7 +80,7 @@ It offers job platforms a single API for authentication, profile data, and skill
 - [ ] Local dev environment via Docker Compose
 
 ### Phase 2 — Platform
-- [ ] OIDC server (job platforms use DevID as an IdP)
+- [ ] OIDC server (job platforms use Yokogushi as an IdP)
 - [ ] Webhook dispatcher with delivery guarantees
 - [ ] OpenAPI spec + TypeScript SDK for job platforms
 - [ ] Skill schema RFC (open community discussion)

@@ -1,4 +1,4 @@
-# DevID — エンジニア向けアイデンティティ基盤
+# Yokogushi — エンジニア向けアイデンティティ基盤
 
 [English](../README.md) | **日本語**
 
@@ -20,7 +20,7 @@
 エンジニア → 転職サイトC（また入力）
                 ↑ 同じデータを3回入力、2サイトは古いまま
 
-DevIDを使えば:
+Yokogushiを使えば:
 エンジニア → GitHubでログイン（一度だけ）
                     ↓
      サイトA ・ サイトB ・ サイトC
@@ -29,9 +29,9 @@ DevIDを使えば:
 
 ---
 
-## DevIDが提供するもの
+## Yokogushiが提供するもの
 
-DevIDは**ソフトウェアエンジニア特化のIDaaS（Identity as a Service）**です。  
+Yokogushiは**ソフトウェアエンジニア特化のIDaaS（Identity as a Service）**です。  
 転職サイトに対して、認証・プロファイルデータ・スキル検証をまとめて提供するAPIを一本提供します。  
 転職サイト側はこれをゼロから構築する必要がなくなります。
 
@@ -42,7 +42,7 @@ DevIDは**ソフトウェアエンジニア特化のIDaaS（Identity as a Servic
 
 ### 転職サイトにとって
 - **登録初日から豊富なプロファイル**: 一文字も入力していないユーザーにも構造化されたスキルデータが存在する
-- **すぐに使える認証** *(Phase 2〜)*: OIDC連携により、DevIDをIdPとして数時間で導入できる
+- **すぐに使える認証** *(Phase 2〜)*: OIDC連携により、YokogushiをIdPとして数時間で導入できる
 - **Webhookによるリアルタイム通知** *(Phase 2〜)*: 候補者のプロファイルが更新された瞬間に通知を受け取れる
 
 ---
@@ -51,7 +51,7 @@ DevIDは**ソフトウェアエンジニア特化のIDaaS（Identity as a Servic
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  DevID Platform                  │
+│                Yokogushi Platform                │
 │                                                  │
 │  ┌─────────────┐   ┌──────────────────────────┐  │
 │  │  認証レイヤー │   │   プロファイルAPI (Rust)  │  │
@@ -81,7 +81,7 @@ DevIDは**ソフトウェアエンジニア特化のIDaaS（Identity as a Servic
 - [ ] Docker Composeでのローカル起動環境
 
 ### Phase 2 — プラットフォーム化
-- [ ] OIDCサーバー（転職サイトがDevIDをIdPとして利用）
+- [ ] OIDCサーバー（転職サイトがYokogushiをIdPとして利用）
 - [ ] 配信保証付きWebhookディスパッチャー
 - [ ] OpenAPI仕様 + 転職サイト向けTypeScript SDK
 - [ ] スキルスキーマRFC（コミュニティ公開・議論）
